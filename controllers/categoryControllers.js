@@ -65,7 +65,7 @@ const updateCategoryController = async (req, res) => {
 //get category
 const getCategoryController = async (req, res) => {
   try {
-    const category = await categoryModel.find({});
+    const category = await categoryModel.find();
     res.status(200).send({
       success: true,
       message: "All Category List ",

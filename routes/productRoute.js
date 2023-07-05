@@ -8,6 +8,7 @@ const {
   deleteProductController,
   updateProductController,
   filterProductController,
+  searchProductController,
   productCountController,
   productListController,
   productFiltersController,
@@ -56,4 +57,8 @@ router.get("/getTotal", productCountController);
 
 //product per page
 router.get("/product-list/:page", productListController);
+
+//search product
+router.get("/search/:keyword", searchProductController);
+
 module.exports = router;

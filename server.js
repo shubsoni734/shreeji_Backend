@@ -10,6 +10,7 @@ const productRoutes = require("./routes/productRoute");
 app.use(cors());
 // this package is use for show the th api
 const morgan = require("morgan");
+const cloudinary = require("./config/cloudinaryCongif");
 
 // this ths accept json format input
 app.use(express.json());
@@ -27,6 +28,7 @@ app.use("/api/v1/category", categoryRoutes);
 app.use("/api/v1/product", productRoutes);
 // calling the databae collection
 dbconnect();
+
 // create server
 app.get("/", (req, res) => {
   res.send("server is running");

@@ -1,7 +1,9 @@
 const { default: slugify } = require("slugify");
 const productModel = require("../models/productModel");
 const fs = require("fs");
+const cloudinary = require("../config/cloudinaryCongif");
 const { log } = require("console");
+
 const createProdductController = async (req, res) => {
   try {
     const { name, description, price, category, quantity, shipping, weight } =
@@ -29,6 +31,9 @@ const createProdductController = async (req, res) => {
 
     const products = new productModel({ ...req.fields, slug: slugify(name) });
     if (photo) {
+      // cloudinary.uploader.upload(photo.tempFilePath, (err, result) => {
+      //   console.log(result);
+      // });
       products.photo.data = fs.readFileSync(photo.path);
       products.photo.contentType = photo.type;
     }
@@ -256,6 +261,28 @@ const productListController = async (req, res) => {
   }
 };
 
+//search product controller
+const searchProductController = async (req, res) => {
+  try {
+    const { keyword } = req.params;
+    const resutls = await productModel
+      .find({
+        $or: [
+          { name: { $regex: keyword, $options: "i" } },
+          { description: { $regex: keyword, $options: "i" } },
+        ],
+      })
+      .select("-photo");
+    res.json(resutls);
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Error in Search Product API",
+      error,
+    });
+  }
+};
+
 module.exports.createProdductController = createProdductController;
 module.exports.getProductsController = getProductsController;
 module.exports.getSingleProductController = getSingleProductController;
@@ -266,3 +293,4 @@ module.exports.updateProductController = updateProductController;
 module.exports.productCountController = productCountController;
 module.exports.productListController = productListController;
 module.exports.productFiltersController = productFiltersController;
+module.exports.searchProductController = searchProductController;
