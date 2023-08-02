@@ -1,8 +1,18 @@
 const { default: slugify } = require("slugify");
 const productModel = require("../models/productModel");
+const categoryModel = require("../models/categoryModel");
+const orderModel = require("../models/orderModel");
 const fs = require("fs");
 const cloudinary = require("../config/cloudinaryCongif");
 const { log } = require("console");
+var braintree = require("braintree");
+// Payment Gateway
+var gateway = new braintree.BraintreeGateway({
+  environment: braintree.Environment.Sandbox,
+  merchantId: process.env.MERCHANT_ID,
+  publicKey: process.env.PUBLIC_KEY,
+  privateKey: process.env.PRIVATE_KEY,
+});
 
 const createProdductController = async (req, res) => {
   try {
@@ -283,6 +293,103 @@ const searchProductController = async (req, res) => {
   }
 };
 
+const similarProductsController = async (req, res) => {
+  try {
+    const { cid, pid } = req.params;
+    const products = await productModel
+      .find({
+        category: cid,
+        _id: { $ne: pid },
+      })
+      .select("-photo")
+      .limit(3)
+      .populate("category");
+    res.status(200).send({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    res.status(500).send({
+      sucess: false,
+      message: "Error In Similar Products Controller ",
+      error,
+    });
+  }
+};
+
+const productCategoryController = async (req, res) => {
+  try {
+    // const { slug } = req.params.slug;
+    const category = await categoryModel.findOne({ slug: req.params.slug });
+    const products = await productModel.find({ category }).populate("category");
+    res.status(200).send({
+      success: true,
+      products,
+      category,
+    });
+  } catch (error) {
+    res.status(400).send({
+      sucess: false,
+      message: "Error while getting Products ",
+      error,
+    });
+  }
+};
+
+//payment gateway api
+
+const brainTreeTokenController = async (req, res) => {
+  try {
+    gateway.clientToken.generate({}, function (err, response) {
+      if (err) {
+        req.status(500).send(err);
+      } else {
+        res.send(response);
+      }
+    });
+  } catch (error) {
+    res.status(400).send({
+      sucess: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
+const brainTreePaymentController = async (req, res) => {
+  try {
+    const { nonce, cart } = req.body;
+    let total = 0;
+    cart.map((i) => {
+      total += i.price;
+    });
+    let newTransaction = gateway.transaction.sale(
+      {
+        amount: total,
+        paymentMethodNonce: nonce,
+        options: {
+          submitForSettlement: true,
+        },
+      },
+      function (error, result) {
+        if (result) {
+          const settledTransaction = result.transaction;
+          const order = new orderModel({
+            products: cart,
+            payment: result,
+            buyer: req.user._id,
+          }).save();
+          res.json({ ok: true, settledTransaction });
+        } else {
+          res.status(500).send(error);
+        }
+      }
+    );
+    console.log((await newTransaction).message);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 module.exports.createProdductController = createProdductController;
 module.exports.getProductsController = getProductsController;
 module.exports.getSingleProductController = getSingleProductController;
@@ -294,3 +401,7 @@ module.exports.productCountController = productCountController;
 module.exports.productListController = productListController;
 module.exports.productFiltersController = productFiltersController;
 module.exports.searchProductController = searchProductController;
+module.exports.similarProductsController = similarProductsController;
+module.exports.productCategoryController = productCategoryController;
+module.exports.brainTreePaymentController = brainTreePaymentController;
+module.exports.brainTreeTokenController = brainTreeTokenController;

@@ -4,7 +4,13 @@ const {
   loginController,
   testController,
   forgotPasswordController,
+  updateProfileController,
   userAuth,
+  getOrdersController,
+  getAllOrdersController,
+  orderStatusController,
+  insertRate,
+  getrate,
 } = require("../controllers/authController");
 const { request } = require("http");
 const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
@@ -33,5 +39,19 @@ route.get("/user-auth", requireSignIn, (req, res) => {
 route.get("/admin-auth", requireSignIn, isAdmin, (req, res) => {
   res.status(200).send({ ok: true });
 });
+
+//update profile
+route.put("/profile", requireSignIn, updateProfileController);
+
+//orders
+route.get("/orders", requireSignIn, getOrdersController);
+
+route.get("/all-orders", requireSignIn, isAdmin, getAllOrdersController);
+
+route.put("/order-status/:oid", requireSignIn, isAdmin, orderStatusController);
+
+route.post("/liveRate", requireSignIn, isAdmin, insertRate);
+
+route.get("/getRate", getrate);
 
 module.exports = route;

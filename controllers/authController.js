@@ -7,7 +7,8 @@ const { send } = require("process");
 const { log } = require("console");
 const requireSignin = require("../middlewares/authMiddleware");
 const { checkPrime } = require("crypto");
-
+const orderModel = require("../models/orderModel");
+const rateModel = require("../models/rateModel");
 const registerController = async (req, res) => {
   try {
     const { name, email, password, address, phone, answer } = req.body;
@@ -53,12 +54,6 @@ const registerController = async (req, res) => {
       address,
       answer,
     }).save();
-    // user.name = name;
-    // user.email = email;
-    // user.password = hashedPassword;
-    // user.phone = phone;
-    // user.address = address;
-    // await user.save();
 
     console.log(user);
 
@@ -173,7 +168,144 @@ const testController = async (req, res) => {
   res.send("test is process");
 };
 
+//update prfole
+const updateProfileController = async (req, res) => {
+  try {
+    const { name, email, password, address, phone } = req.body;
+    const user = await userModel.findById(req.user._id);
+    //password
+    if (password && password.length < 6) {
+      return res.json({ error: "Passsword is required and 6 character long" });
+    }
+    const hashedPassword = password ? await hashPassword(password) : undefined;
+    const updatedUser = await userModel.findByIdAndUpdate(
+      req.user._id,
+      {
+        name: name || user.name,
+        password: hashedPassword || user.password,
+        phone: phone || user.phone,
+        address: address || user.address,
+      },
+      { new: true }
+    );
+    res.status(200).send({
+      success: true,
+      message: "Profile Updated SUccessfully",
+      updatedUser,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).send({
+      success: false,
+      message: "Error WHile Update profile",
+      error,
+    });
+  }
+};
+
+//orders
+const getOrdersController = async (req, res) => {
+  try {
+    const orders = await orderModel
+      .find({ buyer: req.user._id })
+      .populate("products", "-photo")
+      .populate("buyer", "name");
+    res.json(orders);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error While Geting Orders",
+      error,
+    });
+  }
+};
+
+//All orders
+const getAllOrdersController = async (req, res) => {
+  try {
+    const orders = await orderModel
+      .find({})
+      .populate("products", "-photo")
+      .populate("buyer", "name")
+      .sort({ createdAt: "-1" });
+    res.json(orders);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error WHile Geting Orders",
+      error,
+    });
+  }
+};
+
+//order status
+const orderStatusController = async (req, res) => {
+  try {
+    const orderId = req.params;
+    const status = req.body;
+    const orders = await orderModel.findByIdAndUpdate(orderId.oid, status, {
+      new: true,
+    });
+    res.status(200).send({
+      orders,
+    });
+    // res.json(orders);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error While Updateing Order",
+      error,
+    });
+  }
+};
+
+const insertRate = async (req, res) => {
+  try {
+    const { silver, gold } = req.body;
+    if (!silver && !gold) {
+      return res.send({ message: "field is require is required" });
+    }
+    const rate = new rateModel({ silver, gold }).save();
+    console.log(rate);
+    res.status(200).send({
+      success: true,
+    });
+  } catch {
+    res.status(500).send({
+      success: false,
+      message: "Error While Updateing Order",
+      error,
+    });
+  }
+};
+
+const getrate = async (req, res) => {
+  try {
+    const rate = await rateModel.findOne({}).sort({ createdAt: -1 }).exec();
+
+    res.status(200).send({
+      rate,
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Error while fetching rate",
+      error,
+    });
+  }
+};
+
 module.exports.registerController = registerController;
 module.exports.loginController = loginController;
 module.exports.testController = testController;
 module.exports.forgotPasswordController = forgotPasswordController;
+module.exports.updateProfileController = updateProfileController;
+module.exports.getOrdersController = getOrdersController;
+module.exports.getAllOrdersController = getAllOrdersController;
+module.exports.orderStatusController = orderStatusController;
+module.exports.insertRate = insertRate;
+module.exports.getrate = getrate;
